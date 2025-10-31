@@ -4,8 +4,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "generate": "prisma generate",
-    "generate:dist": "sed -i 's|../src/generated/prisma|../dist/generated/prisma|' prisma/schema.prisma && prisma generate && git checkout prisma/schema.prisma",
-    "build": "npm run generate:dist && tsc",
+    "build": "prisma generate && tsc && copyfiles -u 1 \"src/generated/**/*\" dist",
     "start": "node dist/index.js"
   },
   "dependencies": {
@@ -21,6 +20,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.17",
     "@types/pg": "^8.15.5",
+    "copyfiles": "^2.4.1",
     "prisma": "^6.16.3",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3"
