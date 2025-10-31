@@ -4,8 +4,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "generate": "prisma generate",
-    "build": "tsc && npm run generate:dist",
-    "generate:dist": "prisma generate && mkdir -p dist/generated/prisma && cp -r src/generated/prisma/* dist/generated/prisma/",
+    "generate:dist": "sed -i 's|../src/generated/prisma|../dist/generated/prisma|' prisma/schema.prisma && prisma generate && git checkout prisma/schema.prisma",
+    "build": "npm run generate:dist && tsc",
     "start": "node dist/index.js"
   },
   "dependencies": {
