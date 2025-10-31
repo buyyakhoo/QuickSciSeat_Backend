@@ -3,16 +3,20 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && prisma generate",
     "start": "node dist/index.js"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.5",
     "@prisma/client": "^6.16.3",
+    "dotenv": "^17.2.3",
+    "google-auth-library": "^10.4.2",
     "hono": "^4.9.9",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.17",
     "@types/pg": "^8.15.5",
     "prisma": "^6.16.3",
