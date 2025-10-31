@@ -5,7 +5,7 @@
     "dev": "tsx watch src/index.ts",
     "generate": "prisma generate",
     "build": "tsc && npm run generate:dist",
-    "generate:dist": "prisma generate --schema=prisma/schema.prisma --generator client && mv src/generated dist/generated",
+    "generate:dist": "prisma generate && mkdir -p dist/generated && cp -r src/generated/prisma dist/generated/prisma",
     "start": "node dist/index.js"
   },
   "dependencies": {
