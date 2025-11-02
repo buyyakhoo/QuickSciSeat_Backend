@@ -7,7 +7,7 @@ services:
     environment:
       # - PORT=${PORT}
       # - HOST=${HOST}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      # - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - DATABASE_URL=${DATABASE_URL}
       - AUTH_SECRET=${AUTH_SECRET}
       - JWT_SECRET=${JWT_SECRET}
