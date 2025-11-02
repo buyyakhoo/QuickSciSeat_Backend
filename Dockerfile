@@ -16,13 +16,10 @@ COPY . .
 # Generate Prisma client
 # RUN npx prisma db pull
 # RUN npx prisma generate
+CMD sh -c "npx prisma db pull && npx prisma generate && npm run start"
 
 # Build the SvelteKit app
 RUN npm run build
-
-# Generate Prisma client
-RUN npx prisma db pull
-RUN npx prisma generate
 
 # Expose the port the app runs on
 EXPOSE 3000
