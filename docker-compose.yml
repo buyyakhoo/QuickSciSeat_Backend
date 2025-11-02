@@ -1,0 +1,20 @@
+services:
+  backend:
+    build: .
+    image: quicksciseat_backend
+    ports:
+      - "3000:3000"
+    environment:
+      # - PORT=${PORT}
+      # - HOST=${HOST}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - DATABASE_URL=${DATABASE_URL}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    external: true
