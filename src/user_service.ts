@@ -105,18 +105,27 @@ app.post('/verify-or-create', async (c) => {
         console.log('OAuth verification request from:', body.email);
         
         // UPSERT: INSERT if not exists, UPDATE if exists
-        const user = await prisma.users.upsert({
+        const user = await prisma.user.upsert({
             where: {
-                user_id: body.user_id
+                user_id: parseInt(body.user_id)
             },
             update: {
-                name: body.name
+                user_name: body.name
             },
             create: {
-                user_id: body.user_id,
+                user_id: parseInt(body.user_id),
+                user_name: body.name,
                 email: body.email,
-                name: body.name,
-                user_type: 'student' // Default
+                student_id: body.student_id,
+                role_id: 1 // Default to 'Student'
+            }
+        });
+
+        // now fetch with join Role
+        const userFull = await prisma.user.findUnique({
+            where: { user_id: user.user_id },
+            include: {
+                role: true        // this JOINs Role table
             }
         });
 
@@ -125,7 +134,7 @@ app.post('/verify-or-create', async (c) => {
             {
                 user_id: user.user_id,
                 email: user.email,
-                user_type: user.user_type
+                user_type: userFull?.role.role_name
             },
             JWT_SECRET,  
             { expiresIn: '7d' }
@@ -138,8 +147,8 @@ app.post('/verify-or-create', async (c) => {
             user: {
                 user_id: user.user_id,
                 email: user.email,
-                name: user.name,
-                user_type: user.user_type
+                name: user.user_name,
+                user_type: userFull?.role.role_name
             }
         }, 200)
         
@@ -157,8 +166,8 @@ app.get('/user/:student_id', authMiddleware, async (c) => {
     
     console.log(`[PUBLIC] Fetching user with ID: ${student_id}`)
 
-    const user = await prisma.users.findUnique({
-        where: { user_id: student_id }
+    const user = await prisma.user.findUnique({
+        where: { user_id: parseInt(student_id) }
     })
 
     if (!user) {
@@ -177,8 +186,8 @@ app.get('/profile', authMiddleware, async (c) => {
     console.log(`[PROTECTED] User ${userId} (${userEmail}) accessing profile`);
 
     // fetch user profile
-    const user = await prisma.users.findUnique({
-        where: { user_id: userId }
+    const user = await prisma.user.findUnique({
+        where: { user_id: parseInt(userId) }
     });
 
     if (!user) {

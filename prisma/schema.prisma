@@ -16,7 +16,193 @@ model users {
   user_type user_type_enum @default(student)
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Table {
+  table_id         Int                @id @default(autoincrement())
+  floor_id         Int
+  table_code       String             @db.VarChar(20)
+  capacity         Int
+  min_capacity     Int
+  status           table_status_enum  @default(AVAILABLE)
+  is_active        Boolean            @default(true)
+  floor            floor              @relation(fields: [floor_id], references: [floor_id], map: "fk_table_floor")
+  reservationtable reservationtable[]
+
+  @@unique([floor_id, table_code], map: "uq_table_code_per_floor")
+  @@index([capacity], map: "ix_table_capacity")
+  @@index([floor_id, status], map: "ix_table_floor_status")
+}
+
+model User {
+  user_id     Int           @id @default(autoincrement())
+  user_name   String        @db.VarChar(100)
+  email       String        @unique @db.VarChar(100)
+  student_id  String?       @db.VarChar(8)
+  role_id     Int
+  role        role          @relation(fields: [role_id], references: [role_id], map: "fk_user_role")
+  auditlog    auditlog[]
+  cancellog   cancellog[]
+  reservation reservation[]
+  waitlist    waitlist[]
+
+  @@index([email], map: "ix_user_email")
+}
+
+model auditlog {
+  log_id        Int      @id @default(autoincrement())
+  actor_user_id Int?
+  entity_type   String   @db.VarChar(50)
+  entity_id     Int
+  action        String   @db.VarChar(50)
+  old_value     Json?    @db.Json
+  new_value     Json?    @db.Json
+  created_at    DateTime @default(now()) @db.Timestamp(6)
+  User          User?    @relation(fields: [actor_user_id], references: [user_id], map: "fk_audit_actor")
+
+  @@index([entity_type, entity_id, created_at(sort: Desc)], map: "ix_audit_entity_time")
+}
+
+model cancellog {
+  cancel_id            Int         @id @default(autoincrement())
+  reservation_id       Int
+  cancelled_by_user_id Int?
+  cancelled_at         DateTime    @default(now()) @db.Timestamp(6)
+  reservation          reservation @relation(fields: [reservation_id], references: [reservation_id], onDelete: Cascade, map: "fk_cancel_resv")
+  User                 User?       @relation(fields: [cancelled_by_user_id], references: [user_id], map: "fk_cancel_user")
+}
+
+model checkin {
+  checkin_id     Int         @id @default(autoincrement())
+  reservation_id Int         @unique
+  checkin_time   DateTime    @db.Timestamp(6)
+  reservation    reservation @relation(fields: [reservation_id], references: [reservation_id], onDelete: Cascade, map: "fk_checkin_resv")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model floor {
+  floor_id   Int        @id @default(autoincrement())
+  name       String     @db.VarChar(50)
+  open_time  DateTime   @db.Time(6)
+  close_time DateTime   @db.Time(6)
+  Table      Table[]
+  policy     policy[]
+  timeslot   timeslot[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model policy {
+  policy_id              Int      @id @default(autoincrement())
+  floor_id               Int
+  buffer_checkin_minutes Int      @default(5)
+  auto_cancel_no_checkin Boolean  @default(true)
+  max_party_size         Int?
+  created_at             DateTime @default(now()) @db.Timestamp(6)
+  floor                  floor    @relation(fields: [floor_id], references: [floor_id], map: "fk_policy_floor")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reservation {
+  reservation_id   Int                     @id @default(autoincrement())
+  user_id          Int
+  timeslot_id      Int
+  party_size       Int
+  type             reservation_type_enum
+  status           reservation_status_enum @default(PENDING)
+  created_at       DateTime                @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?               @db.Timestamp(6)
+  cancellog        cancellog[]
+  checkin          checkin?
+  timeslot         timeslot                @relation(fields: [timeslot_id], references: [timeslot_id], map: "fk_resv_timeslot")
+  User             User                    @relation(fields: [user_id], references: [user_id], map: "fk_resv_user")
+  reservationtable reservationtable[]
+
+  @@index([timeslot_id, status], map: "ix_resv_timeslot_status")
+  @@index([user_id, created_at(sort: Desc)], map: "ix_resv_user_created")
+}
+
+model reservationtable {
+  reservation_id Int
+  table_id       Int
+  timeslot_id    Int
+  reservation    reservation @relation(fields: [reservation_id], references: [reservation_id], onDelete: Cascade, map: "fk_rt_resv")
+  Table          Table       @relation(fields: [table_id], references: [table_id], map: "fk_rt_table")
+  timeslot       timeslot    @relation(fields: [timeslot_id], references: [timeslot_id], map: "fk_rt_timeslot")
+
+  @@id([reservation_id, table_id])
+  @@unique([table_id, timeslot_id], map: "uq_table_timeslot")
+}
+
+model role {
+  role_id   Int    @id @default(autoincrement())
+  role_name String @unique @db.VarChar(50)
+  User      User[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model timeslot {
+  timeslot_id      Int                  @id @default(autoincrement())
+  floor_id         Int
+  start_at         DateTime             @db.Timestamp(6)
+  end_at           DateTime             @db.Timestamp(6)
+  slot_minutes     Int                  @default(60)
+  status           timeslot_status_enum @default(OPEN)
+  reservation      reservation[]
+  reservationtable reservationtable[]
+  floor            floor                @relation(fields: [floor_id], references: [floor_id], map: "fk_timeslot_floor")
+  waitlist         waitlist[]
+
+  @@unique([floor_id, start_at, end_at], map: "uq_timeslot_per_floor")
+  @@index([floor_id, start_at], map: "ix_timeslot_floor_start")
+}
+
+model waitlist {
+  wait_id     Int                  @id @default(autoincrement())
+  timeslot_id Int
+  user_id     Int
+  status      waitlist_status_enum @default(WAITING)
+  created_at  DateTime             @default(now()) @db.Timestamp(6)
+  timeslot    timeslot             @relation(fields: [timeslot_id], references: [timeslot_id], onDelete: Cascade, map: "fk_wait_timeslot")
+  User        User                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade, map: "fk_wait_user")
+
+  @@unique([timeslot_id, user_id], map: "uq_wait_unique")
+  @@index([timeslot_id, status, created_at], map: "ix_wait_timeslot_status")
+}
+
 enum user_type_enum {
   student
   admin
+}
+
+enum reservation_status_enum {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  AUTO_CANCELLED
+  EXPIRED
+}
+
+enum reservation_type_enum {
+  BOOKING
+  WALKIN
+}
+
+enum table_status_enum {
+  AVAILABLE
+  RESERVED
+  IN_USE
+  CLOSED
+}
+
+enum timeslot_status_enum {
+  OPEN
+  CLOSED
+}
+
+enum waitlist_status_enum {
+  WAITING
+  OFFERED
+  EXPIRED
+  REMOVED
 }
