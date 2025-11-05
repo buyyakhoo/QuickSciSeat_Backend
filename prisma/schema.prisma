@@ -138,16 +138,20 @@ model role {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model timeslot {
   timeslot_id         Int                   @id @default(autoincrement())
-  start_at            DateTime              @db.Timestamp(6)
-  end_at              DateTime              @db.Timestamp(6)
+  start_at            String                @db.VarChar(20)
+  end_at              String                @db.VarChar(20)
   slot_minutes        Int                   @default(60)
-  slot_id             String?               @unique(map: "uq_timeslot_slot_id") @default(dbgenerated("('slot-'::text || lpad((EXTRACT(hour FROM start_at))::text, 2, '0'::text))"))
+  slot_date           DateTime?             @db.Date
+  slot_id             String?               @default(dbgenerated("('slot-'::text || SUBSTRING(start_at FROM 1 FOR 2))"))
+  start_ts            DateTime?             @default(dbgenerated("make_timestamp((EXTRACT(year FROM slot_date))::integer, (EXTRACT(month FROM slot_date))::integer, (EXTRACT(day FROM slot_date))::integer, (split_part((start_at)::text, ':'::text, 1))::integer, (split_part((start_at)::text, ':'::text, 2))::integer, (0)::double precision)")) @db.Timestamp(6)
+  end_ts              DateTime?             @default(dbgenerated("make_timestamp((EXTRACT(year FROM slot_date))::integer, (EXTRACT(month FROM slot_date))::integer, (EXTRACT(day FROM slot_date))::integer, (split_part((end_at)::text, ':'::text, 1))::integer, (split_part((end_at)::text, ':'::text, 2))::integer, (0)::double precision)")) @db.Timestamp(6)
   reservation         reservation[]
   reservationtable    reservationtable[]
   tabletimeslotstatus tabletimeslotstatus[]
   waitlist            waitlist[]
 
-  @@unique([start_at, end_at], map: "uq_timeslot_time")
+  @@index([end_ts], map: "ix_timeslot_end_ts")
+  @@index([start_ts], map: "ix_timeslot_start_ts")
 }
 
 model waitlist {

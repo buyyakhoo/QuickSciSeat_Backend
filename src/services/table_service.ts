@@ -101,25 +101,31 @@ app.get('/timeslots', async (c) => {
         }, 404);
     }
 
-    const timeslotsResult = timeslots.map(ts => {
-        const s = new Date(ts.start_at);
-        s.setHours(s.getHours() - 7);
+    // const timeslotsResult = timeslots.map(ts => {
+    //     const s = new Date(ts.start_at);
+    //     s.setHours(s.getHours() - 7);
 
-        const e = new Date(ts.end_at);
-        e.setHours(e.getHours() - 7);
+    //     const e = new Date(ts.end_at);
+    //     e.setHours(e.getHours() - 7);
 
-        return {
-            ...ts,
-            start_at: s.toTimeString().slice(0, 5),
-            end_at: e.toTimeString().slice(0, 5)
-        }
-    });
+    //     return {
+    //         ...ts,
+    //         start_at: s.toTimeString().slice(0, 5),
+    //         end_at: e.toTimeString().slice(0, 5)
+    //     }
+    // });
 
-    console.log(timeslotsResult);
+    // const timeslotsResult = timeslots.map(ts => ({
+    //     ...ts,
+    //     start_at: ts.start_at,
+    //     end_at: ts.end_at
+    // }));
+
+    // console.log(timeslotsResult);
 
     return c.json({
         success: true,
-        timeslots: timeslotsResult
+        timeslots: timeslots
     }, 200);
 })
 
@@ -136,8 +142,8 @@ app.get('/timeslot/:timeslot_id', async (c) => {
     }
     const timeslotResult = {
         ...timeslot,
-        start_at: timeslot.start_at.toTimeString().slice(0,5),
-        end_at: timeslot.end_at.toTimeString().slice(0,5)
+        start_at: timeslot.start_at,
+        end_at: timeslot.end_at
     };
     return c.json({
         success: true,
@@ -146,7 +152,7 @@ app.get('/timeslot/:timeslot_id', async (c) => {
 })
 
 app.get('/timeslot/:slot_id/tables', async (c) => {
-    const slot_id = c.req.param('slot_id');
+    const slot_id: string = c.req.param('slot_id');
 
     if (slot_id === 'all') {
         const data = await prisma.tabletimeslotstatus.findMany({
@@ -183,13 +189,13 @@ app.get('/timeslot/:slot_id/tables', async (c) => {
             capacity: ttss.Table.capacity,
             min_capacity: ttss.Table.min_capacity,
             status: ttss.status,
-            slot_id: ttss.timeslot.slot_id  // ✅ เพิ่ม slot_id
+            slot_id: ttss.timeslot.slot_id 
         }));
 
         return c.json(result);
     }
 
-    const timeslot_id = await prisma.timeslot.findUnique({
+    const timeslot_id = await prisma.timeslot.findFirst({
         where: { slot_id },
         select: { timeslot_id: true }
     }).then(ts => ts?.timeslot_id);
@@ -230,7 +236,7 @@ app.get('/timeslot/:slot_id/tables', async (c) => {
 app.get('/timeslot/:slot_id/table/:table_id', async (c) => {
     const slot_id = c.req.param('slot_id');
 
-    const ts = await prisma.timeslot.findUnique({
+    const ts = await prisma.timeslot.findFirst({
         where: { slot_id },
         select: { timeslot_id: true }
     });
