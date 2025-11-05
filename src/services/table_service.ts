@@ -115,12 +115,6 @@ app.get('/timeslots', async (c) => {
         }
     });
 
-    //     ({
-    //     ...ts,
-    //     start_at: ts.start_at.toTimeString().slice(0,5),
-    //     end_at: ts.end_at.toTimeString().slice(0,5)
-    // }));
-
     console.log(timeslotsResult);
 
     return c.json({
@@ -151,40 +145,127 @@ app.get('/timeslot/:timeslot_id', async (c) => {
     }, 200);
 })
 
-app.get('/timeslot/:timeslot_id/tables', async (c) => {
-    const timeslot_id = parseInt(c.req.param('timeslot_id'));
+app.get('/timeslot/:slot_id/tables', async (c) => {
+    const slot_id = c.req.param('slot_id');
 
-    const data = await prisma.table.findMany({
+    if (slot_id === 'all') {
+        const data = await prisma.tabletimeslotstatus.findMany({
+            select: {
+                status: true,
+                Table: {
+                    select: {
+                        table_id: true,
+                        table_code: true,
+                        capacity: true,
+                        min_capacity: true,
+                        is_active: true
+                    }
+                },
+                timeslot: {
+                    select: {
+                        slot_id: true,
+                        start_at: true,
+                        end_at: true
+                    }
+                }
+            },
+            where: {
+                Table: {
+                    is_active: true
+                }
+            }
+        });
+
+        // flatten ให้ consumer frontend ง่าย + เพิ่ม slot_id
+        const result = data.map(ttss => ({
+            table_id: ttss.Table.table_id,
+            table_code: ttss.Table.table_code,
+            capacity: ttss.Table.capacity,
+            min_capacity: ttss.Table.min_capacity,
+            status: ttss.status,
+            slot_id: ttss.timeslot.slot_id  // ✅ เพิ่ม slot_id
+        }));
+
+        return c.json(result);
+    }
+
+    const timeslot_id = await prisma.timeslot.findUnique({
+        where: { slot_id },
+        select: { timeslot_id: true }
+    }).then(ts => ts?.timeslot_id);
+
+    console.log('timeslot_id--------------------:', timeslot_id);
+
+    const data = await prisma.tabletimeslotstatus.findMany({
         where: {
-            is_active: true
-        },
-            orderBy: {
-            table_id: 'asc'
+            timeslot: { timeslot_id }
         },
         select: {
-            table_id: true,
-            table_code: true,
-            capacity: true,
-            min_capacity: true,
-            tabletimeslotstatus: {
-                where: { timeslot_id },
+            status: true,
+            Table: {
                 select: {
-                    status: true
+                    table_id: true,
+                    table_code: true,
+                    capacity: true,
+                    min_capacity: true,
+                    is_active: true
+                }
+            }
+        }
+    })
+
+    // flatten ให้ consumer frontend ง่าย
+    const result = data.map(ttss => ({
+        table_id: ttss.Table.table_id,
+        table_code: ttss.Table.table_code,
+        capacity: ttss.Table.capacity,
+        min_capacity:  ttss.Table.min_capacity, 
+        status: ttss.status
+    }));
+
+    return c.json(result);
+    
+})
+
+app.get('/timeslot/:slot_id/table/:table_id', async (c) => {
+    const slot_id = c.req.param('slot_id');
+
+    const ts = await prisma.timeslot.findUnique({
+        where: { slot_id },
+        select: { timeslot_id: true }
+    });
+    
+    const timeslot_id = ts?.timeslot_id;
+    const table_id = parseInt(c.req.param('table_id'));
+
+    const data = await prisma.tabletimeslotstatus.findFirst({
+        where: {
+            timeslot: { timeslot_id },
+            table_id
+        },
+        select: {
+            status: true,
+            Table: {
+                select: {
+                    table_id: true,
+                    table_code: true,
+                    capacity: true,
+                    min_capacity: true,
+                    is_active: true
+                }
+            },
+            timeslot: {
+                select: {
+                    timeslot_id: true,
+                    slot_id: true,
+                    start_at: true,
+                    end_at: true
                 }
             }
         }
     });
 
-    // flatten ให้ consumer frontend ง่าย
-    const result = data.map(t => ({
-        table_id: t.table_id,
-        table_code: t.table_code,
-        capacity: t.capacity,
-        min_capacity: t.min_capacity,
-        status: t.tabletimeslotstatus[0].status
-    }));
-
-    return c.json(result);
+    return c.json(data);
     
 })
 
