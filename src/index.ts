@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 
 import { userService } from './services/user_service.js'
 import { tableService } from './services/table_service.js'
+import { reservation_service } from './services/reservation_service.js'
 // import { seat_controller } from './controllers/seat_controller.js'
 
 const app = new Hono()
@@ -21,6 +22,7 @@ app.get('/', (c) => {
 
 app.route('/user_service', userService)
 app.route('/table_service', tableService)
+app.route('reservation_service', reservation_service)
 
 serve({
   fetch: app.fetch,
