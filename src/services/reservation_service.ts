@@ -146,21 +146,31 @@ app.post('/reservation', async (c) => {
     }
 });
 
-app.get('/check/:user_id/reservation', async (c) => {
+// เช็คว่าผู้ใช้มีการจองโต๊ะใน timeslot นั้นหรือไม่
+app.get('/check/:user_id/:table_id/:slot_id/reservation', async (c) => {
     const user_id = parseInt(c.req.param("user_id"));
+    const table_id = parseInt(c.req.param("table_id"));
+    const slot_id = c.req.param("slot_id");
 
+    // หาการจองของ user นี้ที่ตรงกับ table_id และ slot_id
     const reservations = await prisma.reservation.findFirst({
         where: {
-            user_id: user_id
+            user_id: user_id,
+            reservationtable: {
+                some: {
+                    table_id: table_id,
+                    timeslot: {
+                        slot_id: slot_id
+                    }
+                }
+            }
         },
         include: {
+            timeslot: true,
             reservationtable: {
                 include: {
-                    timeslot: {
-                        select: {
-                            slot_id: true
-                        }
-                    }
+                    Table: true,
+                    timeslot: true
                 }
             }
         }
@@ -170,7 +180,7 @@ app.get('/check/:user_id/reservation', async (c) => {
         return c.json({
             success: true,
             status: false,
-            message: 'No reservation found for this user'
+            message: 'No reservation found for this user with the specified table and timeslot'
         }, 200);
     }
 
@@ -187,17 +197,72 @@ app.get('/check/:user_id/reservation', async (c) => {
         status: true,
         tableReservation: reservations
     }, 200);
-})
+});
 
-// app.post('/reservation/checkin', async (c) => {
+app.get('/check/:user_id/reservation', async (c) => {
+    const user_id = parseInt(c.req.param("user_id"));
 
-//     // insert check-in data to checkin table
+    const reservations = await prisma.reservation.findFirst({
+        where: {
+            user_id: user_id,
+            status: {
+                in: ['PENDING', 'CONFIRMED', 'CHECKED_IN']
+            }
+        },
+        include: {
+            timeslot: true,
+            reservationtable: {
+                include: {
+                    Table: true,
+                    timeslot: true
+                }
+            }
+        },
+        orderBy: {
+            created_at: 'desc'
+        }
+    });
 
-//     // update reservation status to CHECKED_IN
+    // ถ้าไม่เจอ = user ไม่มีการจอง active
+    if (!reservations) {
+        return c.json({
+            success: true,
+            status: false,
+            message: 'No active reservation found for this user'
+        }, 200);
+    }
 
-//     // update tabletimeslotstatus to occupied
+    // ไม่ต้อง check status อีกครั้ง เพราะ where clause กรองให้แล้ว
+    return c.json({
+        success: true,
+        status: true,
+        tableReservation: reservations
+    }, 200);
+});
 
+// app.get('/reservation/:reservation_id', async (c) => {
+//     const reservation_id = parseInt(c.req.param("reservation_id"));
+//     const reservation = await prisma.reservationtable.findFirst({
+//         where: {
+//             reservation_id: reservation_id
+//         },
+//         include: {
+//             Table: true,
+//             timeslot: true
+//         }
+//     });
+//     if (!reservation) {
+//         return c.json({
+//             success: false,
+//             error: 'Reservation not found'
+//         }, 404);
+//     }
+//     return c.json({
+//         success: true,
+//         reservation: reservation
+//     }, 200);
 // })
+
 
 app.post('/reservation/checkin', async (c) => {
     try {
@@ -438,5 +503,175 @@ app.post('/reservation/checkout', async (c) => {
         }, 500);
     }
 });
+
+// Get reservation history
+app.get('/user/:user_id/reservations/history', async (c) => {
+    try {
+        const user_id = parseInt(c.req.param("user_id"));
+
+        if (!user_id) {
+            return c.json({
+                success: false,
+                error: 'Invalid user_id'
+            }, 400);
+        }
+
+        // ดึงประวัติการจองทั้งหมดที่ไม่ใช่ active reservation
+        const reservations = await prisma.reservation.findMany({
+            where: {
+                user_id: user_id,
+                status: {
+                    in: ['CHECKED_OUT', 'CANCELLED', 'AUTO_CANCELLED', 'EXPIRED']
+                }
+            },
+            include: {
+                reservationtable: {
+                    include: {
+                        Table: true  // ดึงข้อมูลโต๊ะทั้งหมด
+                    }
+                },
+                timeslot: {
+                    select: {
+                        slot_id: true,
+                        start_at: true,
+                        end_at: true
+                    }
+                }
+            },
+            orderBy: {
+                created_at: 'desc' // เรียงจากล่าสุดไปเก่าสุด
+            }
+        });
+
+        return c.json({
+            success: true,
+            reservations: reservations,
+            count: reservations.length
+        }, 200);
+
+    } catch (error) {
+        console.error('Error fetching reservation history:', error);
+        return c.json({
+            success: false,
+            error: 'Failed to fetch reservation history',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+// Cancel reservation
+app.post('/reservation/cancel', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { reservation_id, user_id, cancelled_by_user_id } = body;
+
+        // Validation
+        if (!reservation_id) {
+            return c.json({
+                success: false,
+                error: 'Missing required field: reservation_id',
+                error_th: 'กรุณาระบุหมายเลขการจอง'
+            }, 400);
+        }
+
+        // 1. ตรวจสอบว่า reservation มีอยู่จริง
+        const reservation = await prisma.reservation.findUnique({
+            where: { reservation_id: parseInt(reservation_id) },
+            include: {
+                reservationtable: true,
+                timeslot: true
+            }
+        });
+
+        if (!reservation) {
+            return c.json({
+                success: false,
+                error: 'Reservation not found',
+                error_th: 'ไม่พบการจอง'
+            }, 404);
+        }
+
+        // 2. เช็คว่าเป็นของ user นี้จริง (ถ้าส่ง user_id มา)
+        if (user_id && reservation.user_id !== parseInt(user_id)) {
+            return c.json({
+                success: false,
+                error: 'This reservation does not belong to you',
+                error_th: 'นี่ไม่ใช่การจองของคุณ'
+            }, 403);
+        }
+
+        // 3. เช็คว่ายกเลิกได้หรือไม่
+        if (!['PENDING', 'CONFIRMED'].includes(reservation.status)) {
+            return c.json({
+                success: false,
+                error: `Cannot cancel. Current status: ${reservation.status}`,
+                error_th: `ไม่สามารถยกเลิกได้ สถานะปัจจุบัน: ${reservation.status}`,
+                current_status: reservation.status
+            }, 409);
+        }
+
+        // 4. ยกเลิกการจอง ด้วย transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // 4.1 Update reservation status
+            const updatedReservation = await tx.reservation.update({
+                where: { reservation_id: reservation.reservation_id },
+                data: {
+                    status: 'CANCELLED',
+                    updated_at: new Date()
+                }
+            });
+
+            // 4.2 บันทึกลง CancelLog
+            const cancelLog = await tx.cancellog.create({
+                data: {
+                    reservation_id: reservation.reservation_id,
+                    cancelled_by_user_id: cancelled_by_user_id || user_id || null,
+                    cancelled_at: new Date()
+                }
+            });
+
+            // 4.3 คืนสถานะโต๊ะเป็น 'available'
+            const tableIds = reservation.reservationtable.map(rt => rt.table_id);
+            await Promise.all(
+                tableIds.map((table_id) =>
+                    tx.tabletimeslotstatus.updateMany({
+                        where: {
+                            table_id,
+                            timeslot_id: reservation.timeslot_id
+                        },
+                        data: {
+                            status: 'available'
+                        }
+                    })
+                )
+            );
+
+            return { updatedReservation, cancelLog };
+        });
+
+        console.log('Reservation cancelled:', result.updatedReservation.reservation_id);
+
+        return c.json({
+            success: true,
+            message: 'Reservation cancelled successfully',
+            message_th: 'ยกเลิกการจองสำเร็จ',
+            reservation_id: reservation.reservation_id
+        }, 200);
+
+    } catch (error) {
+        console.error('Error cancelling reservation:', error);
+        return c.json({
+            success: false,
+            error: 'Failed to cancel reservation',
+            error_th: 'ยกเลิกการจองไม่สำเร็จ',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+
+
+
+
 
 export { app as reservation_service }
