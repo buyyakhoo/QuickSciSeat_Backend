@@ -1,0 +1,478 @@
+{
+	"info": {
+		"_postman_id": "9af2398e-3e6c-44dd-b798-9b389edbf71f",
+		"name": "QuickSciSeat",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "14399618"
+	},
+	"item": [
+		{
+			"name": "1.1: Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response contains message\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData).to.have.property('message');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{googleToken}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"reservation_id\": 57,\r\n  \"user_id\": 66050291\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/user_service",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"user_service"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2.1: Get All Tables",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Get tables successful\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    pm.test(\"Tables array exists\", function () {\r",
+							"        pm.expect(jsonData.success).to.be.true;\r",
+							"        pm.expect(jsonData.tables).to.be.an('array');\r",
+							"    });\r",
+							"    \r",
+							"    pm.test(\"Tables have required fields\", function () {\r",
+							"        if (jsonData.tables.length > 0) {\r",
+							"            pm.expect(jsonData.tables[0]).to.have.property('table_id');\r",
+							"            pm.expect(jsonData.tables[0]).to.have.property('capacity');\r",
+							"            // บันทึก table_id สำหรับ test ถัดไป\r",
+							"            pm.environment.set(\"testTableId\", jsonData.tables[0].table_id);\r",
+							"        }\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/table_service/tables",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"table_service",
+						"tables"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2.2: Get Timeslots",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Get timeslots successful\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    pm.test(\"Timeslots array exists\", function () {\r",
+							"        pm.expect(jsonData.timeslots).to.be.an('array');\r",
+							"    });\r",
+							"    \r",
+							"    pm.test(\"Timeslot has time format\", function () {\r",
+							"        if (jsonData.timeslots.length > 0) {\r",
+							"            pm.expect(jsonData.timeslots[0]).to.have.property('start_at');\r",
+							"            pm.expect(jsonData.timeslots[0]).to.have.property('end_at');\r",
+							"        }\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/table_service/timeslots",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"table_service",
+						"timeslots"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2.3: Get Table Status for Timeslot",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Get table status successful\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    pm.test(\"Status data is array\", function () {\r",
+							"        pm.expect(jsonData).to.be.an('array');\r",
+							"    });\r",
+							"    \r",
+							"    pm.test(\"Tables have status\", function () {\r",
+							"        if (jsonData.length > 0) {\r",
+							"            pm.expect(jsonData[0]).to.have.property('status');\r",
+							"            pm.expect(jsonData[0].status).to.be.oneOf(['available', 'reserved', 'occupied']);\r",
+							"        }\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/table_service/timeslot/slot-09/tables",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"table_service",
+						"timeslot",
+						"slot-09",
+						"tables"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3.1: Create Reservation",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Create reservation successful\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    if (pm.response.code === 201) {\r",
+							"        pm.test(\"Reservation created\", function () {\r",
+							"            pm.expect(jsonData.success).to.be.true;\r",
+							"            pm.expect(jsonData).to.have.property('reservation_id');\r",
+							"            // บันทึก reservation_id\r",
+							"            pm.environment.set(\"reservationId\", jsonData.reservation_id);\r",
+							"        });\r",
+							"    } else if (pm.response.code === 409) {\r",
+							"        pm.test(\"User already has reservation\", function () {\r",
+							"            pm.expect(jsonData.error_th).to.include(\"มีการจองอยู่แล้ว\");\r",
+							"        });\r",
+							"    }\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"user_id\": 66050291,\r\n  \"timeslot_id\": 2,\r\n  \"party_size\": 2,\r\n  \"table_ids\": [15],\r\n  \"student_ids\": [\"66050999\", \"66051000\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/reservation_service/reservation",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"reservation_service",
+						"reservation"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3.2: Check Reservation Status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check reservation successful\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    pm.test(\"Reservation status returned\", function () {\r",
+							"        pm.expect(jsonData).to.have.property('status');\r",
+							"        \r",
+							"        if (jsonData.status) {\r",
+							"            pm.expect(jsonData.tableReservation).to.have.property('reservation_id');\r",
+							"            pm.expect(jsonData.tableReservation.status).to.be.oneOf(['PENDING', 'CONFIRMED', 'CHECKED_IN']);\r",
+							"        }\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/reservation_service/check/66050291/reservation",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"reservation_service",
+						"check",
+						"66050291",
+						"reservation"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3.3: Check-in",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check-in successful\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    if (pm.response.code === 200) {\r",
+							"        pm.test(\"Check-in completed\", function () {\r",
+							"            pm.expect(jsonData.success).to.be.true;\r",
+							"            pm.expect(jsonData).to.have.property('checkin_id');\r",
+							"        });\r",
+							"    } else if (pm.response.code === 409) {\r",
+							"        pm.test(\"Already checked in\", function () {\r",
+							"            pm.expect(jsonData.error).to.include(\"Already checked in\");\r",
+							"        });\r",
+							"    }\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"reservation_id\": 61,\r\n  \"user_id\": 66050291\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/reservation_service/reservation/checkin",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"reservation_service",
+						"reservation",
+						"checkin"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3.4: Check-out",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check-out successful\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    if (pm.response.code === 200) {\r",
+							"        pm.test(\"Check-out completed\", function () {\r",
+							"            pm.expect(jsonData.success).to.be.true;\r",
+							"        });\r",
+							"    } else if (pm.response.code === 409) {\r",
+							"        pm.test(\"Invalid status for checkout\", function () {\r",
+							"            pm.expect(jsonData.error_th).to.include(\"ไม่สามารถ check-out ได้\");\r",
+							"        });\r",
+							"    }\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"reservation_id\": 61,\r\n  \"user_id\": 66050291\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/reservation_service/reservation/checkout",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"reservation_service",
+						"reservation",
+						"checkout"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3.5: Get Reservation History",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Get history successful\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    \r",
+							"    pm.test(\"History array returned\", function () {\r",
+							"        pm.expect(jsonData.success).to.be.true;\r",
+							"        pm.expect(jsonData.reservations).to.be.an('array');\r",
+							"    });\r",
+							"    \r",
+							"    pm.test(\"History contains completed reservations\", function () {\r",
+							"        jsonData.reservations.forEach(function(reservation) {\r",
+							"            pm.expect(reservation.status).to.be.oneOf(['CHECKED_OUT', 'CANCELLED', 'AUTO_CANCELLED', 'EXPIRED']);\r",
+							"        });\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/reservation_service/user/66050291/reservations/history",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"reservation_service",
+						"user",
+						"66050291",
+						"reservations",
+						"history"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
